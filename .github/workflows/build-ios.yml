@@ -1,0 +1,53 @@
+
+name: Build Reduction iOS
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: macos-26
+
+    steps:
+      - name: Download Reduction source
+        uses: actions/checkout@v4
+        with:
+          repository: mindtravel/Reduction
+          ref: ios
+          persist-credentials: false
+
+      - name: Check Xcode
+        run: |
+          xcodebuild -version
+          git rev-parse HEAD
+
+      - name: Build iOS application
+        run: |
+          xcodebuild \
+            -project ios/Reduction.xcodeproj \
+            -scheme Reduction \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath build/ios \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            build
+
+      - name: Package IPA
+        run: |
+          mkdir -p Payload
+          cp -R build/ios/Build/Products/Release-iphoneos/Reduction.app Payload/
+          /usr/bin/ditto -c -k --keepParent Payload Reduction.ipa
+          ls -lh Reduction.ipa
+
+      - name: Upload IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: Reduction-iOS
+          path: Reduction.ipa
+          if-no-files-found: error
